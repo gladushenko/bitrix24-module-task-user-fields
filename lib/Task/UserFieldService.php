@@ -2,7 +2,9 @@
 
 namespace Gladushenko\TaskUserFields\Task;
 
+use Bitrix\Main\Loader;
 use CUserFieldEnum;
+use CTasks;
 
 class UserFieldService
 {
@@ -110,17 +112,23 @@ class UserFieldService
      */
     public static function saveTaskFieldValue(int $taskId, string $fieldName, $value): bool
     {
-        if ($taskId <= 0) {
+        if ($taskId <= 0 || !Loader::includeModule('tasks')) {
             return false;
         }
 
-        global $USER_FIELD_MANAGER;
+        global $USER;
 
-        if (!$USER_FIELD_MANAGER) {
-            return false;
-        }
+        $task = new CTasks(false);
 
-        return (bool)$USER_FIELD_MANAGER->Update(self::UF_ENTITY, $taskId, [$fieldName => $value]);
+        return (bool) $task->Update(
+            $taskId,
+            [
+                $fieldName => $value,
+            ],
+            [
+                'USER_ID' => $USER->GetID(),
+            ]
+        );
     }
 
     /**
