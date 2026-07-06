@@ -17,7 +17,7 @@ class AssetLoader
         global $APPLICATION;
 
         if (defined('ADMIN_SECTION') && ADMIN_SECTION === true) {
-            static::addAdminStyles();
+            static::addAdminAssets();
             return;
         }
 
@@ -35,14 +35,15 @@ class AssetLoader
     }
 
     /**
-     * Подключает стили административного меню модуля.
+     * Подключает CSS и JS административной части модуля.
      *
      * @return void
      */
-    public static function addAdminStyles(): void
+    public static function addAdminAssets(): void
     {
         global $APPLICATION;
         $APPLICATION->SetAdditionalCSS('/local/modules/gladushenko.taskuserfields/assets/css/admin.css');
+        $APPLICATION->AddHeadScript('/local/modules/gladushenko.taskuserfields/assets/js/admin-settings.js');
     }
 
     /**

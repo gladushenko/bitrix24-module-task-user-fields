@@ -46,7 +46,13 @@ class TaskUserField extends Controller
 
         Loader::includeModule('gladushenko.taskuserfields');
 
-        return UserFieldService::getTaskFieldsForView($taskId);
+        return [
+            'task' => [
+                'id' => $taskId,
+                'groupId' => UserFieldService::getTaskGroupId($taskId),
+            ],
+            'fields' => UserFieldService::getTaskFieldsForView($taskId),
+        ];
     }
 
     /**
@@ -71,7 +77,9 @@ class TaskUserField extends Controller
 
         Loader::includeModule('gladushenko.taskuserfields');
 
-        if (!UserFieldService::isFieldAllowed($fieldName)) {
+        $projectId = UserFieldService::getTaskGroupId($taskId);
+
+        if (!UserFieldService::isFieldAllowed($fieldName, $projectId)) {
             $this->addError(new Error('Поле не настроено для отображения'));
             return null;
         }

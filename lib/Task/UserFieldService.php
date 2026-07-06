@@ -3,8 +3,11 @@
 namespace Gladushenko\TaskUserFields\Task;
 
 use Bitrix\Main\Loader;
-use CUserFieldEnum;
+use CSocNetGroup;
+use CTaskItem;
 use CTasks;
+use CUserFieldEnum;
+use Throwable;
 
 class UserFieldService
 {
@@ -132,21 +135,107 @@ class UserFieldService
     }
 
     /**
+     * Возвращает ID проекта задачи.
+     *
+     * @param int $taskId
+     *
+     * @return int
+     */
+    public static function getTaskGroupId(int $taskId): int
+    {
+        if ($taskId <= 0 || !Loader::includeModule('tasks')) {
+            return 0;
+        }
+
+        try {
+            $task = CTaskItem::getInstance($taskId, 1);
+            $taskData = $task->getData(false);
+
+            return (int)($taskData['GROUP_ID'] ?? 0);
+        } catch (Throwable $exception) {
+            return 0;
+        }
+    }
+
+    /**
+     * Возвращает список проектов Битрикс24.
+     *
+     * @return array
+     */
+    public static function getProjectList(): array
+    {
+        if (!Loader::includeModule('socialnetwork')) {
+            return [];
+        }
+
+        $projects = [];
+        $result = CSocNetGroup::GetList(
+            ['ID' => 'ASC'],
+            [],
+            false,
+            false,
+            ['ID', 'NAME', 'PROJECT', 'CLOSED']
+        );
+
+        while ($row = $result->Fetch()) {
+            $projects[] = [
+                'id' => (int)$row['ID'],
+                'name' => (string)$row['NAME'],
+                'isProject' => ($row['PROJECT'] ?? 'N') === 'Y',
+                'isClosed' => ($row['CLOSED'] ?? 'N') === 'Y',
+            ];
+        }
+
+        return $projects;
+    }
+
+    /**
      * Проверяет, разрешено ли поле для редактирования через модуль.
      *
      * @param string $fieldName
+     * @param int|null $projectId
      *
      * @return bool
      */
-    public static function isFieldAllowed(string $fieldName): bool
+    public static function isFieldAllowed(string $fieldName, ?int $projectId = null): bool
     {
-        foreach (UserFieldSettings::getDisplayFields() as $displayField) {
-            if (!empty($displayField['enabled']) && $displayField['name'] === $fieldName) {
-                return true;
+        foreach (static::getDisplaySetsForProject($projectId) as $displaySet) {
+            foreach ($displaySet['fields'] as $displayField) {
+                if (!empty($displayField['enabled']) && $displayField['name'] === $fieldName) {
+                    return true;
+                }
             }
         }
 
         return false;
+    }
+
+    /**
+     * Возвращает области, подходящие для проекта.
+     *
+     * @param int|null $projectId
+     *
+     * @return array
+     */
+    public static function getDisplaySetsForProject(?int $projectId): array
+    {
+        $matchedSets = [];
+        $fallbackSets = [];
+
+        foreach (UserFieldSettings::getDisplaySets() as $displaySet) {
+            $projectIds = array_map('intval', (array)($displaySet['projectIds'] ?? []));
+
+            if (empty($projectIds)) {
+                $fallbackSets[] = $displaySet;
+                continue;
+            }
+
+            if ($projectId !== null && $projectId > 0 && in_array($projectId, $projectIds, true)) {
+                $matchedSets[] = $displaySet;
+            }
+        }
+
+        return !empty($matchedSets) ? $matchedSets : $fallbackSets;
     }
 
     /**

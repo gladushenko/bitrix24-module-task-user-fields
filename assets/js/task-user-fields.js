@@ -14,6 +14,7 @@
          */
         constructor(config) {
             this.config = config || {};
+            this.sets = this.config.sets || [];
             this.fields = this.config.fields || [];
             this.actions = this.config.actions || {};
             this.blockTitle = this.config.title !== undefined ? this.config.title : 'Дополнительные поля';
@@ -32,7 +33,7 @@
          * @return {void}
          */
         init() {
-            if (!this.fields.length || !window.BX || !BX.Event || !BX.Event.EventEmitter) {
+            if (!this.hasRenderableConfig() || !window.BX || !BX.Event || !BX.Event.EventEmitter) {
                 return;
             }
 
@@ -43,6 +44,61 @@
                     this.onCardInit();
                 }
             });
+        }
+
+        /**
+         * Проверяет, есть ли настроенные области для отображения.
+         *
+         * @return {boolean}
+         */
+        hasRenderableConfig() {
+            if (this.sets.length) {
+                return this.sets.some(function (set) {
+                    return set && set.fields && set.fields.length;
+                });
+            }
+
+            return this.fields.length > 0;
+        }
+
+        /**
+         * Возвращает область, подходящую для проекта задачи.
+         *
+         * @param {number} groupId
+         *
+         * @return {object|null}
+         */
+        getActiveSet(groupId) {
+            if (!this.sets.length) {
+                return this.fields.length ? {
+                    id: 'default',
+                    title: this.blockTitle,
+                    projectIds: [],
+                    fields: this.fields,
+                } : null;
+            }
+
+            const projectId = parseInt(groupId, 10) || 0;
+            let fallbackSet = null;
+
+            for (let i = 0; i < this.sets.length; i++) {
+                const set = this.sets[i];
+                const projectIds = (set.projectIds || []).map(function (id) {
+                    return parseInt(id, 10);
+                }).filter(function (id) {
+                    return id > 0;
+                });
+
+                if (!fallbackSet && !projectIds.length) {
+                    fallbackSet = set;
+                }
+
+                if (projectId > 0 && projectIds.indexOf(projectId) !== -1) {
+                    return set;
+                }
+            }
+
+            return fallbackSet;
         }
 
         /**
@@ -390,7 +446,9 @@
                                 this.actions.getTaskUf,
                                 { data: { taskId: taskId } }
                             ).then((response) => {
-                                const freshEntry = response && response.data && response.data[field.name];
+                                const responseData = response && response.data;
+                                const freshFields = responseData && responseData.fields ? responseData.fields : responseData;
+                                const freshEntry = freshFields && freshFields[field.name];
                                 exitEdit(freshEntry || null);
                             }).catch(function () {
                                 exitEdit(null);
@@ -584,40 +642,46 @@
          * @param {Element} container
          * @param {number} taskId
          * @param {object} data
+         * @param {object} activeSet
          *
          * @return {void}
          */
-        renderBlock(container, taskId, data) {
+        renderBlock(container, taskId, data, activeSet) {
             const oldBlock = document.getElementById(this.blockId);
 
             if (oldBlock) {
                 oldBlock.parentNode.removeChild(oldBlock);
             }
 
+            if (!activeSet || !activeSet.fields || !activeSet.fields.length) {
+                return;
+            }
+
             const block = document.createElement('div');
             const inner = document.createElement('div');
             const grid = document.createElement('div');
+            const title = activeSet.title !== undefined ? activeSet.title : this.blockTitle;
 
             block.id = this.blockId;
             block.setAttribute('data-task-user-fields-task-id', taskId);
             block.className = 'tasks-full-card-field-container print-before-divider-accent --custom';
             inner.className = 'tasks-field-user-fields print-no-box-shadow glad-task-uf-inner';
 
-            if (this.blockTitle) {
+            if (title) {
                 const titleRow = document.createElement('div');
                 const titleText = document.createElement('span');
 
                 titleRow.className = 'tasks-field-user-fields-title';
                 titleRow.style.cssText = 'grid-column: 1 / -1;';
                 titleText.className = 'ui-text --md --accent';
-                titleText.textContent = this.blockTitle;
+                titleText.textContent = title;
                 titleRow.appendChild(titleText);
                 inner.appendChild(titleRow);
             }
 
             grid.style.cssText = 'display: grid; grid-template-columns: 1fr; gap: 0;';
 
-            this.fields.forEach((field) => {
+            activeSet.fields.forEach((field) => {
                 const entry = data[field.name] || { value: '', display: '', options: null };
 
                 grid.appendChild(this.buildFieldRow(field, entry, taskId));
@@ -661,9 +725,12 @@
             ).then((response) => {
                 delete this.pendingTaskIds[taskId];
 
-                const data = response && response.data;
+                const responseData = response && response.data;
+                const fields = responseData && responseData.fields ? responseData.fields : responseData;
+                const task = responseData && responseData.task ? responseData.task : {};
+                const activeSet = this.getActiveSet(task.groupId || 0);
 
-                if (!data || typeof data !== 'object') {
+                if (!fields || typeof fields !== 'object') {
                     return;
                 }
 
@@ -673,7 +740,17 @@
                     return;
                 }
 
-                this.renderBlock(container, taskId, data);
+                if (!activeSet) {
+                    const oldBlock = document.getElementById(this.blockId);
+
+                    if (oldBlock) {
+                        oldBlock.parentNode.removeChild(oldBlock);
+                    }
+
+                    return;
+                }
+
+                this.renderBlock(container, taskId, fields, activeSet);
             }).catch(() => {
                 delete this.pendingTaskIds[taskId];
             });
