@@ -206,6 +206,7 @@ class UserFieldSettings
                 'name' => $name,
                 'label' => trim((string)($field['label'] ?? '')),
                 'enabled' => !empty($field['enabled']),
+                'muted' => !empty($field['muted']),
             ];
         }
 

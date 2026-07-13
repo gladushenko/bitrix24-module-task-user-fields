@@ -73,12 +73,15 @@
         rows.forEach(function (row, fieldIndex) {
             const fieldName = row.getAttribute('data-field-name') || '';
             const enabledInput = row.querySelector('.glad-task-uf-enabled');
+            const mutedInput = row.querySelector('.glad-task-uf-muted');
             const labelInput = row.querySelector('.glad-task-uf-label');
             const enabled = enabledInput && !enabledInput.disabled && enabledInput.checked ? '1' : '0';
+            const muted = mutedInput && !mutedInput.disabled && mutedInput.checked ? '1' : '0';
             const label = labelInput && !labelInput.disabled ? labelInput.value : '';
 
             appendHidden(generatedFields, 'set[fields][' + fieldIndex + '][name]', fieldName);
             appendHidden(generatedFields, 'set[fields][' + fieldIndex + '][enabled]', enabled);
+            appendHidden(generatedFields, 'set[fields][' + fieldIndex + '][muted]', muted);
             appendHidden(generatedFields, 'set[fields][' + fieldIndex + '][label]', label);
         });
     }

@@ -93,6 +93,7 @@ class TaskUserFieldConfig
                     ? $displayField['label']
                     : UserFieldService::getFieldSystemLabel($userField, $fieldName),
                 'type' => $typeId,
+                'muted' => !empty($displayField['muted']),
                 'settings' => [
                     'rows' => static::getFrontendRows($userField),
                 ],

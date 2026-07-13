@@ -84,6 +84,11 @@ class TaskUserField extends Controller
             return null;
         }
 
+        if (!UserFieldService::isFieldEditable($fieldName, $projectId)) {
+            $this->addError(new Error('Поле недоступно для редактирования'));
+            return null;
+        }
+
         $saved = UserFieldService::saveTaskFieldValue($taskId, $fieldName, $value);
 
         if (!$saved) {

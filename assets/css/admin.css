@@ -225,6 +225,10 @@
     width: 40px;
 }
 
+.glad-task-uf-mute-column {
+    width: 70px;
+}
+
 .glad-task-uf-cell-center {
     text-align: center;
 }

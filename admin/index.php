@@ -231,6 +231,7 @@ if ($saveError !== '') {
                     <thead>
                         <tr>
                             <th class="glad-task-uf-activity-column">Активность</th>
+                            <th class="glad-task-uf-mute-column">Только чтение</th>
                             <th>Символьный код</th>
                             <th>Тип</th>
                             <th>Название</th>
@@ -241,12 +242,17 @@ if ($saveError !== '') {
                         <?php foreach ($allUfFields as $ufName => $userField):
                             $saved = $savedMap[$ufName] ?? [];
                             $enabled = !empty($saved['enabled']);
+                            $muted = !empty($saved['muted']);
                             $label = $saved['label'] ?? '';
                             $typeId = (string)$userField['USER_TYPE_ID'];
                             $systemLabel = UserFieldService::getFieldSystemLabel($userField, $ufName);
                             $supported = UserFieldService::isSupportedType($typeId);
                             $typeClass = $supported ? '' : ' glad-task-uf-type-unsupported';
                             $unsupportedReason = UserFieldService::getUnsupportedReason($typeId);
+                            $editUrl = '/bitrix/admin/userfield_edit.php?lang='
+                                . urlencode(LANGUAGE_ID)
+                                . '&ID='
+                                . (int)$userField['ID'];
                         ?>
                             <tr data-field-name="<?= taskUserFieldsHtml($ufName) ?>">
                                 <td class="glad-task-uf-cell-center">
@@ -263,7 +269,25 @@ if ($saveError !== '') {
                                                title="<?= taskUserFieldsHtml($unsupportedReason) ?>">
                                     <?php endif; ?>
                                 </td>
-                                <td><code><?= taskUserFieldsHtml($ufName) ?></code></td>
+                                <td class="glad-task-uf-cell-center">
+                                    <?php if ($supported): ?>
+                                        <input type="checkbox"
+                                               class="glad-task-uf-muted"
+                                               value="1"
+                                            <?= $muted ? 'checked' : '' ?>>
+                                    <?php else: ?>
+                                        <input type="checkbox"
+                                               class="glad-task-uf-muted glad-task-uf-disabled-control"
+                                               value="0"
+                                               disabled
+                                               title="<?= taskUserFieldsHtml($unsupportedReason) ?>">
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <a href="<?= taskUserFieldsHtml($editUrl) ?>" target="_blank">
+                                        <code><?= taskUserFieldsHtml($ufName) ?></code>
+                                    </a>
+                                </td>
                                 <td>
                                     <span class="glad-task-uf-type-badge<?= $typeClass ?>"><?= taskUserFieldsHtml($typeId) ?></span>
                                     <?php if (!$supported): ?>

@@ -211,6 +211,31 @@ class UserFieldService
     }
 
     /**
+     * Проверяет, разрешено ли поле для редактирования через модуль.
+     *
+     * @param string $fieldName
+     * @param int|null $projectId
+     *
+     * @return bool
+     */
+    public static function isFieldEditable(string $fieldName, ?int $projectId = null): bool
+    {
+        foreach (static::getDisplaySetsForProject($projectId) as $displaySet) {
+            foreach ($displaySet['fields'] as $displayField) {
+                if (
+                    !empty($displayField['enabled'])
+                    && empty($displayField['muted'])
+                    && $displayField['name'] === $fieldName
+                ) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Возвращает области, подходящие для проекта.
      *
      * @param int|null $projectId

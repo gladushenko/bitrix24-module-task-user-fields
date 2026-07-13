@@ -397,11 +397,15 @@
             const row = document.createElement('div');
             const label = document.createElement('span');
             const valueWrap = document.createElement('div');
-            const editButton = this.createEditButton();
+            const isMuted = Boolean(field.muted);
+            const editButton = isMuted ? null : this.createEditButton();
             let currentEntry = { value: entry.value, display: entry.display, options: entry.options };
             let displayElement = this.createDisplayElement(field, currentEntry);
 
             row.className = 'tasks-user-field print-no-border --string';
+            if (isMuted) {
+                row.classList.add('glad-task-uf-muted-row');
+            }
 
             label.className = 'ui-text --xs tasks-user-field-title';
             label.textContent = field.label;
@@ -409,9 +413,15 @@
             valueWrap.className = 'tasks-user-field-value';
             valueWrap.style.cssText = 'display: flex; align-items: center; gap: 8px; flex: 1; width: 100%;';
             valueWrap.appendChild(displayElement);
-            valueWrap.appendChild(editButton);
+            if (editButton) {
+                valueWrap.appendChild(editButton);
+            }
 
             const showEditButton = () => {
+                if (!editButton) {
+                    return;
+                }
+
                 if (!row.classList.contains('--editing')) {
                     editButton.style.opacity = '1';
                     editButton.style.pointerEvents = 'auto';
@@ -419,12 +429,16 @@
             };
 
             const hideEditButton = () => {
+                if (!editButton) {
+                    return;
+                }
+
                 editButton.style.opacity = '0';
                 editButton.style.pointerEvents = 'none';
             };
 
             const startEdit = () => {
-                if (row.classList.contains('--editing')) {
+                if (isMuted || row.classList.contains('--editing')) {
                     return;
                 }
 
@@ -475,7 +489,9 @@
 
                     displayElement = this.createDisplayElement(field, currentEntry);
                     valueWrap.appendChild(displayElement);
-                    valueWrap.appendChild(editButton);
+                    if (editButton) {
+                        valueWrap.appendChild(editButton);
+                    }
                 };
 
                 this.activeEditCancel = exitEdit;
@@ -551,10 +567,12 @@
             row.addEventListener('mouseenter', showEditButton);
             row.addEventListener('mouseleave', hideEditButton);
 
-            editButton.addEventListener('click', function (event) {
-                event.stopPropagation();
-                startEdit();
-            });
+            if (editButton) {
+                editButton.addEventListener('click', function (event) {
+                    event.stopPropagation();
+                    startEdit();
+                });
+            }
 
             row.appendChild(label);
             row.appendChild(valueWrap);
