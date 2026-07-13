@@ -25,6 +25,7 @@
             this.taskUrlPattern = /\/tasks\/task\/view\/(\d+)\//;
             this.pendingTaskIds = {};
             this.cardBlockObserver = null;
+            this.activeEditCancel = null;
         }
 
         /**
@@ -190,6 +191,10 @@
             span.className = 'ui-text --md';
             span.textContent = display || '';
 
+            if (field.type === 'string' && this.getFieldRows(field) > 1) {
+                span.style.cssText = 'white-space: pre-wrap; max-width: 520px;';
+            }
+
             return span;
         }
 
@@ -199,7 +204,7 @@
          * @param {object} field
          * @param {object} entry
          *
-         * @return {{container: HTMLElement, control: HTMLInputElement|HTMLSelectElement}}
+         * @return {{container: HTMLElement, control: HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement}}
          */
         createEditWidget(field, entry) {
             const raw = entry.value;
@@ -262,6 +267,21 @@
                 };
             }
 
+            if (field.type === 'string' && this.getFieldRows(field) > 1) {
+                const wrapper = this.createTextareaWrapper();
+                const textarea = document.createElement('textarea');
+
+                textarea.className = 'ui-ctl-element';
+                textarea.rows = this.getFieldRows(field);
+                textarea.value = Array.isArray(raw) ? raw.join('\n') : (raw || '');
+                wrapper.appendChild(textarea);
+
+                return {
+                    container: wrapper,
+                    control: textarea,
+                };
+            }
+
             const wrapper = this.createInputWrapper();
             const input = document.createElement('input');
             input.type = 'text';
@@ -276,6 +296,19 @@
         }
 
         /**
+         * Возвращает количество строк текстового поля.
+         *
+         * @param {object} field
+         *
+         * @return {number}
+         */
+        getFieldRows(field) {
+            const rows = field && field.settings ? parseInt(field.settings.rows, 10) : 1;
+
+            return rows > 1 ? rows : 1;
+        }
+
+        /**
          * Создает стандартную Б24-обертку для текстового поля.
          *
          * @return {HTMLElement}
@@ -284,6 +317,19 @@
             const wrapper = document.createElement('div');
             wrapper.className = 'ui-ctl ui-ctl-textbox ui-ctl-xs';
             wrapper.style.cssText = 'min-width: 160px; width: auto;';
+
+            return wrapper;
+        }
+
+        /**
+         * Создает стандартную Б24-обертку для многострочного текстового поля.
+         *
+         * @return {HTMLElement}
+         */
+        createTextareaWrapper() {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'ui-ctl ui-ctl-textarea';
+            wrapper.style.cssText = 'min-width: 260px; width: min(100%, 520px);';
 
             return wrapper;
         }
@@ -382,6 +428,7 @@
                     return;
                 }
 
+                this.closeActiveEdit();
                 row.classList.add('--editing');
                 hideEditButton();
                 valueWrap.removeChild(displayElement);
@@ -418,6 +465,10 @@
                     valueWrap.removeChild(widgetContainer);
                     valueWrap.removeChild(buttonWrap);
 
+                    if (this.activeEditCancel === exitEdit) {
+                        this.activeEditCancel = null;
+                    }
+
                     if (newEntry) {
                         currentEntry = newEntry;
                     }
@@ -426,6 +477,8 @@
                     valueWrap.appendChild(displayElement);
                     valueWrap.appendChild(editButton);
                 };
+
+                this.activeEditCancel = exitEdit;
 
                 const doSave = () => {
                     const newValue = widget.value !== undefined ? widget.value : '';
@@ -457,7 +510,8 @@
                         (errorMessage) => {
                             saveButton.disabled = false;
                             saveButton.textContent = 'Сохранить';
-                            this.showRowError(row, errorMessage);
+                            this.showRowError(row, 'Ошибка сохранения');
+                            this.showGlobalError(errorMessage || 'Ошибка сохранения');
                         }
                     );
                 };
@@ -478,7 +532,12 @@
                         exitEdit(null);
                     }
 
-                    if (event.key === 'Enter' && field.type !== 'enumeration' && field.type !== 'boolean') {
+                    if (
+                        event.key === 'Enter'
+                        && widget.tagName !== 'TEXTAREA'
+                        && field.type !== 'enumeration'
+                        && field.type !== 'boolean'
+                    ) {
                         event.preventDefault();
                         doSave();
                     }
@@ -501,6 +560,21 @@
             row.appendChild(valueWrap);
 
             return row;
+        }
+
+        /**
+         * Закрывает текущее редактируемое поле без сохранения.
+         *
+         * @return {void}
+         */
+        closeActiveEdit() {
+            if (typeof this.activeEditCancel !== 'function') {
+                return;
+            }
+
+            const cancel = this.activeEditCancel;
+            this.activeEditCancel = null;
+            cancel(null);
         }
 
         /**
@@ -553,6 +627,22 @@
                     element.parentNode.removeChild(element);
                 }
             }, 4000);
+        }
+
+        /**
+         * Показывает общую ошибку сохранения задачи.
+         *
+         * @param {string} message
+         *
+         * @return {void}
+         */
+        showGlobalError(message) {
+            if (
+                window.TaskUserFieldsModule
+                && typeof window.TaskUserFieldsModule.showTaskError === 'function'
+            ) {
+                window.TaskUserFieldsModule.showTaskError(message);
+            }
         }
 
         /**

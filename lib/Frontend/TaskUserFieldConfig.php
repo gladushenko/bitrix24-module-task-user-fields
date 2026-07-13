@@ -93,9 +93,32 @@ class TaskUserFieldConfig
                     ? $displayField['label']
                     : UserFieldService::getFieldSystemLabel($userField, $fieldName),
                 'type' => $typeId,
+                'settings' => [
+                    'rows' => static::getFrontendRows($userField),
+                ],
             ];
         }
 
         return $frontendFields;
+    }
+
+    /**
+     * Возвращает количество строк поля для frontend.
+     *
+     * @param array $userField
+     *
+     * @return int
+     */
+    private static function getFrontendRows(array $userField): int
+    {
+        $settings = (array)($userField['SETTINGS'] ?? []);
+        $rows = (int)($settings['ROWS'] ?? 1);
+        $size = (int)($settings['SIZE'] ?? 1);
+
+        if ($rows > 1) {
+            return $rows;
+        }
+
+        return $size > 1 && $size <= 10 ? $size : 1;
     }
 }

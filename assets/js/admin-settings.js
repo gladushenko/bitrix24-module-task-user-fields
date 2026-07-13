@@ -32,6 +32,19 @@
                 saveButton.disabled = true;
             }
         });
+
+        let element = document.getElementById('global_menu_taskufields');
+        if (element && !element.classList.contains('adm-main-menu-item-active')) {
+            BX.adminMenu.GlobalMenuClick('taskufields');
+        }
+
+        let link = document.querySelector('a.adm-submenu-item-name-link[href="/local/modules/gladushenko.taskuserfields/admin/index.php"]');
+        if (link) {
+            let block = link.closest('.adm-sub-submenu-block');
+            if (block) {
+                block.classList.add('adm-submenu-item-active');
+            }
+        }
     }
 
     /**

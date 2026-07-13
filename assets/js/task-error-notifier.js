@@ -11,7 +11,6 @@
          * Создает обработчик ошибок задач.
          */
         constructor() {
-            this.taskDescriptionUpdateAction = 'tasks.v2.Task.Description.update';
             this.notificationId = 'task-user-fields-bottom-error';
         }
 
@@ -33,11 +32,17 @@
             const originalRunAction = BX.ajax.runAction;
             const notifier = this;
 
+            window.TaskUserFieldsModule.showTaskError = function (message) {
+                notifier.showBottomError(
+                    notifier.normalizeTaskAjaxErrorMessage(message || 'Ошибка сохранения')
+                );
+            };
+
             BX.ajax.runAction = function (action, config) {
                 const promise = originalRunAction.apply(this, arguments);
 
                 if (
-                    action !== notifier.taskDescriptionUpdateAction
+                    !notifier.isTaskUpdateAction(action)
                     || !promise
                     || typeof promise.catch !== 'function'
                 ) {
@@ -54,6 +59,19 @@
         }
 
         /**
+         * Проверяет, относится ли AJAX-действие к обновлению задачи.
+         *
+         * @param {string} action
+         *
+         * @return {boolean}
+         */
+        isTaskUpdateAction(action) {
+            return typeof action === 'string'
+                && action.indexOf('tasks.v2.Task.') === 0
+                && action.indexOf('.update') !== -1;
+        }
+
+        /**
          * Показывает ошибку AJAX-действия задачи.
          *
          * @param {object} response
@@ -62,11 +80,6 @@
          */
         showTaskAjaxError(response) {
             const message = this.getTaskAjaxErrorMessage(response);
-
-            if (!message) {
-                return;
-            }
-
             this.showBottomError(message);
         }
 
@@ -97,8 +110,9 @@
                 'box-sizing: border-box',
                 'padding: 13px 18px',
                 'border-radius: 4px',
-                'background: #ffdd33',
-                'color: #333',
+                'border: 1px solid #f5a6a6',
+                'background: #fde8e8',
+                'color: #a10707',
                 'font: 14px/1.45 Arial, Helvetica, sans-serif',
                 'box-shadow: 0 10px 30px rgba(82, 92, 105, .22)',
                 'z-index: 2147483647',
@@ -131,7 +145,7 @@
             const errors = response && response.errors;
 
             if (!errors || !errors.length || !errors[0].message) {
-                return '';
+                return 'Ошибка сохранения';
             }
 
             return this.normalizeTaskAjaxErrorMessage(errors[0].message);

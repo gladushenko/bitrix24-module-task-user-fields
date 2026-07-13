@@ -84,8 +84,19 @@ class TaskUserField extends Controller
             return null;
         }
 
+        $saved = UserFieldService::saveTaskFieldValue($taskId, $fieldName, $value);
+
+        if (!$saved) {
+            global $APPLICATION;
+
+            $exception = $APPLICATION->GetException();
+            $this->addError(new Error($exception ? $exception->GetString() : 'Не удалось сохранить'));
+
+            return null;
+        }
+
         return [
-            'saved' => UserFieldService::saveTaskFieldValue($taskId, $fieldName, $value),
+            'saved' => true,
         ];
     }
 }
