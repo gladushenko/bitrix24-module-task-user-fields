@@ -56,6 +56,7 @@ class AssetLoader
         return [
             '/local/modules/gladushenko.taskuserfields/assets/js/task-error-notifier.js',
             '/local/modules/gladushenko.taskuserfields/assets/js/task-user-fields.js',
+            '/local/modules/gladushenko.taskuserfields/assets/js/task-filter-fields.js',
             '/local/modules/gladushenko.taskuserfields/assets/js/main.js',
         ];
     }

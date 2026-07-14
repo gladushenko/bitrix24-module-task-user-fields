@@ -232,9 +232,10 @@ if ($saveError !== '') {
                         <tr>
                             <th class="glad-task-uf-activity-column">Активность</th>
                             <th class="glad-task-uf-mute-column">Только чтение</th>
+                            <th class="glad-task-uf-id-column">ID</th>
+                            <th>Название</th>
                             <th>Символьный код</th>
                             <th>Тип</th>
-                            <th>Название</th>
                             <th>Название в карточке задачи</th>
                         </tr>
                     </thead>
@@ -283,11 +284,15 @@ if ($saveError !== '') {
                                                title="<?= taskUserFieldsHtml($unsupportedReason) ?>">
                                     <?php endif; ?>
                                 </td>
+
                                 <td>
                                     <a href="<?= taskUserFieldsHtml($editUrl) ?>" target="_blank">
-                                        <code><?= taskUserFieldsHtml($ufName) ?></code>
+                                        <?= (int)$userField['ID'] ?>
                                     </a>
                                 </td>
+                                <td><?= taskUserFieldsHtml($systemLabel) ?></td>
+
+                                <td><code><?= taskUserFieldsHtml($ufName) ?></code></td>
                                 <td>
                                     <span class="glad-task-uf-type-badge<?= $typeClass ?>"><?= taskUserFieldsHtml($typeId) ?></span>
                                     <?php if (!$supported): ?>
@@ -296,7 +301,6 @@ if ($saveError !== '') {
                                         </span>
                                     <?php endif; ?>
                                 </td>
-                                <td><?= taskUserFieldsHtml($systemLabel) ?></td>
                                 <td>
                                     <input type="text"
                                            class="glad-task-uf-label-input glad-task-uf-label<?= $supported ? '' : ' glad-task-uf-disabled-control' ?>"

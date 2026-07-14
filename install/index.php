@@ -12,6 +12,10 @@ class gladushenko_taskuserfields extends CModule
 {
     public const MODULE_ID = 'gladushenko.taskuserfields';
 
+    private const COMPONENT_SOURCE_PATH = '/components/bitrix/tasks.task.list';
+    private const COMPONENT_TARGET_PATH = '/local/components/bitrix/tasks.task.list';
+    private const COMPONENT_OWNER_MARKER = 'gladushenko_taskuserfields_owner';
+
     public $MODULE_ID = self::MODULE_ID;
     public $MODULE_VERSION;
     public $MODULE_VERSION_DATE;
@@ -120,21 +124,32 @@ class gladushenko_taskuserfields extends CModule
     }
 
     /**
-     * Оставляет файлы модуля внутри директории модуля.
+     * Устанавливает файлы модуля за пределы директории модуля.
      *
      * @return void
      */
     public function InstallFiles(): void
     {
+        CheckDirPath($this->getComponentTargetPath() . '/');
+
+        CopyDirFiles(
+            $this->getComponentSourcePath() . '/',
+            $this->getComponentTargetPath() . '/',
+            true,
+            true
+        );
     }
 
     /**
-     * Оставляет файлы модуля внутри директории модуля.
+     * Удаляет установленные файлы модуля за пределами директории модуля.
      *
      * @return void
      */
     public function UnInstallFiles(): void
     {
+        if ($this->isInstalledComponentOwnedByModule()) {
+            DeleteDirFilesEx(self::COMPONENT_TARGET_PATH);
+        }
     }
 
     /**
@@ -170,6 +185,42 @@ class gladushenko_taskuserfields extends CModule
             Loc::getMessage('UNINSTALL_TITLE') ?: 'Удаление модуля',
             __DIR__ . '/unstep_1.php'
         );
+    }
+
+    /**
+     * Проверяет, что установленный компонент принадлежит модулю.
+     *
+     * @return bool
+     */
+    private function isInstalledComponentOwnedByModule(): bool
+    {
+        $markerPath = $this->getComponentTargetPath() . '/' . self::COMPONENT_OWNER_MARKER;
+
+        if (!is_file($markerPath)) {
+            return false;
+        }
+
+        return trim((string)file_get_contents($markerPath)) === self::MODULE_ID;
+    }
+
+    /**
+     * Возвращает путь к компоненту внутри установщика модуля.
+     *
+     * @return string
+     */
+    private function getComponentSourcePath(): string
+    {
+        return __DIR__ . self::COMPONENT_SOURCE_PATH;
+    }
+
+    /**
+     * Возвращает путь к установленному локальному компоненту.
+     *
+     * @return string
+     */
+    private function getComponentTargetPath(): string
+    {
+        return $_SERVER['DOCUMENT_ROOT'] . self::COMPONENT_TARGET_PATH;
     }
 
     /**

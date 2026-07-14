@@ -6,6 +6,7 @@ use Bitrix\Main\Loader;
 use Gladushenko\TaskUserFields\Admin\Menu;
 use Gladushenko\TaskUserFields\Controller\TaskUserField;
 use Gladushenko\TaskUserFields\Frontend\AssetLoader;
+use Gladushenko\TaskUserFields\Frontend\TaskFilterConfig;
 use Gladushenko\TaskUserFields\Frontend\TaskUserFieldConfig;
 use Gladushenko\TaskUserFields\Task\UserFieldService;
 use Gladushenko\TaskUserFields\Task\UserFieldSettings;
@@ -15,6 +16,7 @@ Loader::registerAutoLoadClasses(
     [
         Menu::class => 'lib/Admin/Menu.php',
         AssetLoader::class => 'lib/Frontend/AssetLoader.php',
+        TaskFilterConfig::class => 'lib/Frontend/TaskFilterConfig.php',
         TaskUserFieldConfig::class => 'lib/Frontend/TaskUserFieldConfig.php',
         UserFieldSettings::class => 'lib/Task/UserFieldSettings.php',
         UserFieldService::class => 'lib/Task/UserFieldService.php',

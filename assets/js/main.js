@@ -23,6 +23,11 @@
             const taskUserFields = new window.TaskUserFieldsModule.TaskUserFields(config);
             taskUserFields.init();
         }
+
+        if (window.TaskUserFieldsModule.TaskFilterFields) {
+            const taskFilterFields = new window.TaskUserFieldsModule.TaskFilterFields(config);
+            taskFilterFields.init();
+        }
     }
 
     bootstrap();

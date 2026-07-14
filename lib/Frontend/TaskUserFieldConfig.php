@@ -28,6 +28,7 @@ class TaskUserFieldConfig
             ],
             'sets' => $frontendSets,
             'fields' => $firstSet['fields'] ?? [],
+            'filter' => TaskFilterConfig::build($availableFields),
         ];
     }
 
@@ -93,6 +94,7 @@ class TaskUserFieldConfig
                     ? $displayField['label']
                     : UserFieldService::getFieldSystemLabel($userField, $fieldName),
                 'type' => $typeId,
+                'multiple' => ($userField['MULTIPLE'] ?? 'N') === 'Y',
                 'muted' => !empty($displayField['muted']),
                 'settings' => [
                     'rows' => static::getFrontendRows($userField),

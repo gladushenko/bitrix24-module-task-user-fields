@@ -25,6 +25,7 @@
             this.taskUrlPattern = /\/tasks\/task\/view\/(\d+)\//;
             this.pendingTaskIds = {};
             this.cardBlockObserver = null;
+            this.nativeChipObserver = null;
             this.activeEditCancel = null;
         }
 
@@ -210,6 +211,10 @@
             const raw = entry.value;
 
             if (field.type === 'enumeration') {
+                if (field.multiple) {
+                    return this.createEnumMultiSelectWidget(field, entry);
+                }
+
                 const wrapper = this.createSelectWrapper();
                 const select = document.createElement('select');
                 const empty = document.createElement('option');
@@ -296,6 +301,306 @@
         }
 
         /**
+         * Создает мультиселект для множественного пользовательского списка.
+         *
+         * @param {object} field
+         * @param {object} entry
+         *
+         * @return {{container: HTMLElement, control: HTMLElement}}
+         */
+        createEnumMultiSelectWidget(field, entry) {
+            const wrapper = document.createElement('div');
+            const control = document.createElement('div');
+            const squareContainer = document.createElement('span');
+            const searchContainer = document.createElement('span');
+            const searchInput = document.createElement('input');
+            const deleteContainer = document.createElement('span');
+            const deleteItem = document.createElement('div');
+            const dropdown = document.createElement('div');
+            const items = this.buildEnumMultiSelectItems(entry.options || []);
+            let selectedValues = this.normalizeEnumValues(entry.value);
+            let isOpened = false;
+
+            wrapper.className = 'main-ui-filter-wield-with-label main-ui-control-field main-ui-filter-preset-field';
+            wrapper.setAttribute('data-type', 'MULTI_SELECT');
+            wrapper.setAttribute('data-name', field.name);
+            wrapper.style.cssText = 'position: relative; min-width: 220px; max-width: 520px; width: max-content; padding: 0; margin: 0;';
+            control.className = 'main-ui-control main-ui-multi-select';
+            control.setAttribute('data-name', field.name);
+            control.setAttribute('data-items', JSON.stringify(items));
+            control.setAttribute('data-params', JSON.stringify({ isMulti: true }));
+            control.setAttribute('tabindex', '0');
+            control.style.cssText = [
+                'min-height: 30px',
+                'min-width: 220px',
+                'max-width: 520px',
+                'box-sizing: border-box',
+                'cursor: text'
+            ].join(';');
+
+            squareContainer.className = 'main-ui-square-container';
+            searchContainer.className = 'main-ui-square-search';
+            searchInput.type = 'text';
+            searchInput.className = 'main-ui-square-search-item';
+            searchInput.readOnly = true;
+            searchInput.placeholder = 'Выбрать';
+            deleteContainer.className = 'main-ui-control-value-delete';
+            deleteItem.className = 'main-ui-control-value-delete-item';
+            dropdown.style.cssText = [
+                'display: none',
+                'position: absolute',
+                'z-index: 1000',
+                'left: 0',
+                'right: 0',
+                'max-height: 220px',
+                'overflow-y: auto',
+                'background: #fff',
+                'border: 1px solid #c6cdd3',
+                'box-shadow: 0 6px 18px rgba(0, 0, 0, .18)',
+                'box-sizing: border-box'
+            ].join(';');
+
+            const syncValue = () => {
+                control.setAttribute('data-value', JSON.stringify(this.getSelectedEnumMultiSelectItems(items, selectedValues)));
+            };
+
+            const closeDropdown = () => {
+                isOpened = false;
+                dropdown.style.display = 'none';
+            };
+
+            const openDropdown = () => {
+                isOpened = true;
+                this.updateEnumMultiSelectDropdownPosition(wrapper, dropdown, items.length);
+                dropdown.style.display = 'block';
+            };
+
+            const renderSquares = () => {
+                squareContainer.innerHTML = '';
+
+                selectedValues.forEach((value) => {
+                    const item = items.find(function (option) {
+                        return String(option.VALUE) === String(value);
+                    });
+
+                    if (!item) {
+                        return;
+                    }
+
+                    squareContainer.appendChild(this.createEnumMultiSelectSquare(item, function () {
+                        selectedValues = selectedValues.filter(function (selectedValue) {
+                            return String(selectedValue) !== String(item.VALUE);
+                        });
+                        renderSquares();
+                        renderOptions();
+                        syncValue();
+                    }));
+                });
+
+                searchInput.placeholder = selectedValues.length ? '' : 'Выбрать';
+            };
+
+            const renderOptions = () => {
+                dropdown.innerHTML = '';
+
+                if (!items.length) {
+                    const empty = document.createElement('div');
+                    empty.style.cssText = 'padding: 8px 12px; color: #828b95;';
+                    empty.textContent = 'Нет значений';
+                    dropdown.appendChild(empty);
+                    return;
+                }
+
+                items.forEach((item) => {
+                    dropdown.appendChild(this.createEnumMultiSelectOption(
+                        item,
+                        selectedValues.indexOf(String(item.VALUE)) !== -1,
+                        () => {
+                            const id = String(item.VALUE);
+
+                            if (selectedValues.indexOf(id) === -1) {
+                                selectedValues.push(id);
+                            } else {
+                                selectedValues = selectedValues.filter(function (selectedValue) {
+                                    return selectedValue !== id;
+                                });
+                            }
+
+                            renderSquares();
+                            renderOptions();
+                            syncValue();
+                        }
+                    ));
+                });
+            };
+
+            Object.defineProperty(control, 'value', {
+                configurable: true,
+                get: function () {
+                    return selectedValues.slice();
+                },
+                set: function (value) {
+                    selectedValues = Array.isArray(value) ? value.map(String) : [];
+                    renderSquares();
+                    renderOptions();
+                    syncValue();
+                },
+            });
+
+            searchContainer.appendChild(searchInput);
+            deleteContainer.appendChild(deleteItem);
+            control.appendChild(squareContainer);
+            control.appendChild(searchContainer);
+            control.appendChild(deleteContainer);
+            wrapper.appendChild(control);
+            wrapper.appendChild(dropdown);
+
+            deleteContainer.addEventListener('click', function (event) {
+                event.stopPropagation();
+                selectedValues = [];
+                renderSquares();
+                renderOptions();
+                syncValue();
+                closeDropdown();
+            });
+
+            control.addEventListener('click', function (event) {
+                event.stopPropagation();
+
+                if (isOpened) {
+                    closeDropdown();
+                    return;
+                }
+
+                openDropdown();
+            });
+
+            control.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    closeDropdown();
+                }
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!wrapper.contains(event.target)) {
+                    closeDropdown();
+                }
+            });
+
+            renderSquares();
+            renderOptions();
+            syncValue();
+
+            return {
+                container: wrapper,
+                control: control,
+            };
+        }
+
+        /**
+         * Создает плашку выбранного значения мультиселекта.
+         *
+         * @param {object} option
+         * @param {Function} onRemove
+         *
+         * @return {HTMLElement}
+         */
+        createEnumMultiSelectSquare(option, onRemove) {
+            const square = document.createElement('div');
+            const text = document.createElement('div');
+            const remove = document.createElement('div');
+
+            square.className = 'main-ui-square';
+            square.setAttribute('data-item', JSON.stringify(option));
+            square.style.cssText = 'margin: 2px 4px 2px 0;';
+            text.className = 'main-ui-square-item';
+            text.textContent = option.NAME;
+            remove.className = 'main-ui-item-icon main-ui-square-delete';
+
+            remove.addEventListener('click', function (event) {
+                event.stopPropagation();
+                onRemove();
+            });
+
+            square.appendChild(text);
+            square.appendChild(remove);
+
+            return square;
+        }
+
+        /**
+         * Создает пункт выпадающего списка мультиселекта.
+         *
+         * @param {object} option
+         * @param {boolean} selected
+         * @param {Function} onToggle
+         *
+         * @return {HTMLElement}
+         */
+        createEnumMultiSelectOption(option, selected, onToggle) {
+            const item = document.createElement('div');
+            const checkbox = document.createElement('input');
+            const text = document.createElement('span');
+
+            item.style.cssText = [
+                'display: flex',
+                'align-items: center',
+                'gap: 8px',
+                'padding: 8px 12px',
+                'cursor: pointer'
+            ].join(';');
+            checkbox.type = 'checkbox';
+            checkbox.checked = selected;
+            text.textContent = option.NAME;
+
+            item.addEventListener('mouseenter', function () {
+                item.style.background = '#f5f7f8';
+            });
+
+            item.addEventListener('mouseleave', function () {
+                item.style.background = '';
+            });
+
+            item.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                onToggle();
+            });
+
+            item.appendChild(checkbox);
+            item.appendChild(text);
+
+            return item;
+        }
+
+        /**
+         * Выбирает направление открытия выпадающего списка.
+         *
+         * @param {HTMLElement} wrapper
+         * @param {HTMLElement} dropdown
+         * @param {number} itemsCount
+         *
+         * @return {void}
+         */
+        updateEnumMultiSelectDropdownPosition(wrapper, dropdown, itemsCount) {
+            const rect = wrapper.getBoundingClientRect();
+            const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+            const estimatedHeight = Math.min(220, Math.max(42, itemsCount * 35));
+            const spaceBelow = viewportHeight - rect.bottom;
+            const spaceAbove = rect.top;
+            const shouldOpenUp = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+
+            if (shouldOpenUp) {
+                dropdown.style.top = 'auto';
+                dropdown.style.bottom = 'calc(100% + 4px)';
+                return;
+            }
+
+            dropdown.style.top = 'calc(100% + 4px)';
+            dropdown.style.bottom = 'auto';
+        }
+
+        /**
          * Возвращает количество строк текстового поля.
          *
          * @param {object} field
@@ -306,6 +611,59 @@
             const rows = field && field.settings ? parseInt(field.settings.rows, 10) : 1;
 
             return rows > 1 ? rows : 1;
+        }
+
+        /**
+         * Нормализует значения пользовательского списка.
+         *
+         * @param {*} value
+         *
+         * @return {Array}
+         */
+        normalizeEnumValues(value) {
+            if (Array.isArray(value)) {
+                return value.map(String).filter(function (item) {
+                    return item !== '' && item !== 'false';
+                });
+            }
+
+            if (value === null || value === undefined || value === '' || value === false) {
+                return [];
+            }
+
+            return [String(value)];
+        }
+
+        /**
+         * Собирает значения списка в формате main.ui.filter.
+         *
+         * @param {Array} options
+         *
+         * @return {Array}
+         */
+        buildEnumMultiSelectItems(options) {
+            return options.map(function (option) {
+                return {
+                    NAME: String(option.value || ''),
+                    VALUE: String(option.id || ''),
+                };
+            }).filter(function (option) {
+                return option.VALUE !== '';
+            });
+        }
+
+        /**
+         * Возвращает выбранные значения списка в формате main.ui.filter.
+         *
+         * @param {Array} items
+         * @param {Array} selectedValues
+         *
+         * @return {Array}
+         */
+        getSelectedEnumMultiSelectItems(items, selectedValues) {
+            return items.filter(function (item) {
+                return selectedValues.indexOf(String(item.VALUE)) !== -1;
+            });
         }
 
         /**
@@ -678,8 +1036,77 @@
             style.textContent =
                 '.tasks-field-user-fields:not(.glad-task-uf-inner) > *:not(.tasks-field-user-fields-title) {' +
                 '    display: none !important;' +
+                '}' +
+                '.tasks-full-card-field-container:has(.tasks-field-user-fields[data-task-field-id="userFields"]:not(.glad-task-uf-inner)) {' +
+                '    display: none !important;' +
+                '}' +
+                '[data-task-chip-id="userFields"] {' +
+                '    display: none !important;' +
                 '}';
             document.head.appendChild(style);
+            this.hideNativeUserFields();
+            this.observeNativeUserFields();
+        }
+
+        /**
+         * Скрывает стандартные пользовательские поля и связанную плашку.
+         *
+         * @return {void}
+         */
+        hideNativeUserFields() {
+            this.hideNativeUserFieldsBlock();
+            this.hideNativeUserFieldsChip();
+        }
+
+        /**
+         * Скрывает плашку стандартных пользовательских полей.
+         *
+         * @return {void}
+         */
+        hideNativeUserFieldsChip() {
+            document.querySelectorAll('[data-task-chip-id="userFields"]').forEach(function (chip) {
+                chip.style.display = 'none';
+            });
+        }
+
+        /**
+         * Скрывает стандартный блок пользовательских полей.
+         *
+         * @return {void}
+         */
+        hideNativeUserFieldsBlock() {
+            document
+                .querySelectorAll('.tasks-field-user-fields[data-task-field-id="userFields"]:not(.glad-task-uf-inner)')
+                .forEach(function (block) {
+                    const container = block.closest('.tasks-full-card-field-container');
+
+                    if (container) {
+                        container.style.display = 'none';
+                        return;
+                    }
+
+                    block.style.display = 'none';
+                });
+        }
+
+        /**
+         * Следит за повторным появлением плашки стандартных пользовательских полей.
+         *
+         * @return {void}
+         */
+        observeNativeUserFields() {
+            if (this.nativeChipObserver || !window.MutationObserver || !document.body) {
+                return;
+            }
+
+            this.nativeChipObserver = new MutationObserver(() => {
+                this.hideNativeUserFields();
+            });
+
+            this.nativeChipObserver.observe(document.body, {
+                childList: true,
+                subtree: true,
+            });
         }
 
         /**

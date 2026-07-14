@@ -60,11 +60,11 @@ class TaskUserField extends Controller
      *
      * @param int $taskId
      * @param string $fieldName
-     * @param mixed $value
+     * @param mixed|null $value
      *
      * @return array|null
      */
-    public function saveTaskUfAction(int $taskId, string $fieldName, $value): ?array
+    public function saveTaskUfAction(int $taskId, string $fieldName, $value = null): ?array
     {
         if ($taskId <= 0) {
             return null;
@@ -89,7 +89,7 @@ class TaskUserField extends Controller
             return null;
         }
 
-        $saved = UserFieldService::saveTaskFieldValue($taskId, $fieldName, $value);
+        $saved = UserFieldService::saveTaskFieldValue($taskId, $fieldName, $value ?? []);
 
         if (!$saved) {
             global $APPLICATION;
